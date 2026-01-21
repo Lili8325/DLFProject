@@ -8,6 +8,8 @@ import pickle
 import csv
 from tqdm import tqdm
 
+from download_online_models import _hf_path_or_id
+from model import HF_ROBERTA_DIR
 
 class CrossModalDataset(Dataset):
     def __init__(self, samples, tokenizer, image_processor):
@@ -125,7 +127,9 @@ def create_and_save_dataset(
     if not samples:
         raise FileNotFoundError(f"No valid samples parsed from `{csv_path}`")
 
-    tokenizer = RobertaTokenizer.from_pretrained("FacebookAI/roberta-base")
+    roberta_src, local_only = _hf_path_or_id(HF_ROBERTA_DIR, "FacebookAI/roberta-base")
+    tokenizer = RobertaTokenizer.from_pretrained(roberta_src, local_files_only=local_only)
+    # tokenizer = RobertaTokenizer.from_pretrained("FacebookAI/roberta-base")
     image_processor = resnet50(weights=ResNet50_Weights.DEFAULT)
 
     dataset = CrossModalDataset(samples, tokenizer, image_processor)
