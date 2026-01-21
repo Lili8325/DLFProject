@@ -15,14 +15,42 @@ HF_LOCAL_DIR = Path(__file__).resolve().parent / "local_hf"
 HF_ROBERTA_DIR = HF_LOCAL_DIR / "roberta-base"
 
 class ImageEncoder(nn.Module):
-    def __init__(self, hidden_dim=768):
+    def __init__(self, hidden_dim=768, freeze_until="layer2"):
         super().__init__()
 
         backbone = resnet50(weights=ResNet50_Weights.DEFAULT)
-        self.backbone = nn.Sequential(*list(backbone.children())[:-2])
+
+        self._freeze_backbone(backbone, freeze_until)
+
+        self.backbone = nn.Sequential(
+            backbone.conv1,
+            backbone.bn1,
+            backbone.relu,
+            backbone.maxpool,
+            backbone.layer1,
+            backbone.layer2,
+            backbone.layer3,
+            backbone.layer4,
+        )
+        # self.backbone = nn.Sequential(*list(backbone.children())[:-2])
         # Output: [B, 2048, 7, 7]
 
         self.proj = nn.Linear(2048, hidden_dim)
+
+    def _freeze_backbone(self, backbone, freeze_until):
+        freeze_map = {
+            "conv1": ["conv1", "bn1"],
+            "layer1": ["conv1", "bn1", "layer1"],
+            "layer2": ["conv1", "bn1", "layer1", "layer2"],
+            "layer3": ["conv1", "bn1", "layer1", "layer2", "layer3"],
+        }
+
+        layers_to_freeze = freeze_map.get(freeze_until, [])
+
+        for name, module in backbone.named_children():
+            if name in layers_to_freeze:
+                for param in module.parameters():
+                    param.requires_grad = False
 
     def forward(self, images):
         feats = self.backbone(images)            # [B, 2048, 7, 7]
@@ -40,6 +68,14 @@ class TextEncoder(nn.Module):
         roberta_src, local_only = _hf_path_or_id(HF_ROBERTA_DIR, "FacebookAI/roberta-base")
         self.roberta = RobertaModel.from_pretrained(roberta_src, local_files_only=local_only)
         # self.roberta = RobertaModel.from_pretrained("FacebookAI/roberta-base")
+
+        for param in self.roberta.parameters():
+            param.requires_grad = False
+
+    def unfreeze_last_layers(self, n=2):
+        for layer in self.roberta.encoder.layer[-n:]:
+            for p in layer.parameters():
+                p.requires_grad = True
 
     def forward(self, input_ids, attention_mask):
         outputs = self.roberta(

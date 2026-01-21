@@ -101,7 +101,6 @@ def train():
     model = SubmissionModel().to(device)
     optimizer = torch.optim.AdamW([
         {"params": model.image_encoder.parameters(), "lr": lr_backbone},
-        {"params": model.text_encoder.parameters(), "lr": lr_backbone},
         {"params": model.cross_attn.parameters(), "lr": lr_head},
         {"params": model.classifier.parameters(), "lr": lr_head},
     ])
@@ -111,10 +110,30 @@ def train():
     print("Model, optimizer, and GradScaler initialized. Using mixed precision (float16).")
 
     best_auc = 0.0
+    UNFREEZE_EPOCH = 2
+    N_ROBERTA_LAYERS = 2
+    ROBERTA_LR = 1e-5
+    roberta_unfrozen = False
+
     print(f"Starting training for {num_epochs} epochs...")
 
     for epoch in tqdm(range(num_epochs), desc="Epochs", unit="epoch"):
         print(f"\nEpoch {epoch + 1}/{num_epochs}")
+
+        if epoch == UNFREEZE_EPOCH and not roberta_unfrozen:
+            print(f"Unfreezing last {N_ROBERTA_LAYERS} RoBERTa layers")
+
+            model.text_encoder.unfreeze_last_layers(N_ROBERTA_LAYERS)
+
+            optimizer.add_param_group({
+                "params": filter(
+                    lambda p: p.requires_grad,
+                    model.text_encoder.parameters()
+                ),
+                "lr": ROBERTA_LR,
+            })
+
+            roberta_unfrozen = True
 
         train_loss = train_one_epoch(model, train_loader, optimizer, scaler, epoch)
         print(f"Train Loss: {train_loss:.4f}")
