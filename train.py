@@ -12,7 +12,7 @@ from torchvision import transforms
 from caption_dataset import CrossModalDataset
 
 batch_size = 16
-num_epochs = 5
+num_epochs = 15
 lr_backbone = 1e-5
 lr_head = 1e-4
 
@@ -69,7 +69,7 @@ def evaluate(model, loader, epoch: int | None = None):
 
         probs = torch.sigmoid(logits)
         preds.extend(probs.cpu().numpy())
-        labels.extend(batch["label"].cpu().numpy())
+        labels.extend(batch["label"].numpy())
 
     preds_bin = (preds > 0.5).astype(int)
 
