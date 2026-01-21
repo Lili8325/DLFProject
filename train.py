@@ -71,7 +71,7 @@ def evaluate(model, loader, epoch: int | None = None):
         preds.extend(probs.cpu().numpy())
         labels.extend(batch["label"].numpy())
 
-    preds_bin = (preds > 0.5).astype(int)
+    preds_bin = (np.array(preds) > 0.5).astype(int)
 
     return {
         "accuracy": accuracy_score(labels, preds_bin),
