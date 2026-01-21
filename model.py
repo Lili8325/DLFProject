@@ -4,7 +4,7 @@ from torchvision import transforms
 from transformers import RobertaModel, RobertaTokenizer
 from torchvision.models import resnet50, ResNet50_Weights
 from pathlib import Path
-from download_online_models import _hf_path_or_id
+from download_online_models import _hf_path_or_id, get_resnet50_local_path
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
@@ -18,7 +18,12 @@ class ImageEncoder(nn.Module):
     def __init__(self, hidden_dim=768, freeze_until="layer2"):
         super().__init__()
 
-        backbone = resnet50(weights=ResNet50_Weights.DEFAULT)
+        # backbone = resnet50(weights=ResNet50_Weights.DEFAULT)
+
+        resnet_weights_path = get_resnet50_local_path()
+        backbone = resnet50(weights=None)
+        state = torch.load(resnet_weights_path, map_location="cpu")
+        backbone.load_state_dict(state)
 
         self._freeze_backbone(backbone, freeze_until)
 
@@ -118,7 +123,7 @@ class ClassificationHead(nn.Module):
 
 
 def get_transform():
-    weights = ResNet50_Weights.DEFAULT
+    weights = ResNet50_Weights.IMAGENET1K_V1
     return weights.transforms()
 
 class SubmissionModel(nn.Module):
