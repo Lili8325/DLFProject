@@ -58,4 +58,5 @@ def _hf_path_or_id(local_path: Path, model_id: str) -> tuple[str, bool]:
     return model_id, False
 
 if __name__ == "__main__":
-    download_hf_roberta_model()
+    # download_hf_roberta_model()
+    download_resnet50_model()

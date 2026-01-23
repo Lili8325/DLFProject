@@ -135,6 +135,7 @@ class SubmissionModel(nn.Module):
         self.classifier = ClassificationHead(hidden_dim=768)
 
         self._tokenizer = None
+        self._image_transform = get_transform()
 
         self.to(device)
 
